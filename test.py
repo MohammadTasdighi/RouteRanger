@@ -1,11 +1,8 @@
 import random
 import pandas as pd
 import streamlit as st
-import cv2
-import numpy as np
-import pygame
 
-# Function to generate driver profiles (as provided)
+# Step 1: Generate Driver Profiles
 def generate_driver_profiles(num_drivers=10):
     profiles = []
     for _ in range(num_drivers):
@@ -37,7 +34,7 @@ def generate_driver_profiles(num_drivers=10):
 
     return pd.DataFrame(profiles)
 
-# Function to analyze choices (as provided)
+# Step 2: Analyze Choices
 def analyze_choices(driver_profiles):
     reasons = {}
     for _, row in driver_profiles.iterrows():
@@ -54,7 +51,6 @@ def analyze_choices(driver_profiles):
                 reason = "Chosen path A to avoid construction on path B."
             else:
                 reason = "Other reasons not specified."
-
             reasons[row['driver_id']] = reason
             
         elif row['preferred_path'] == 'B':
@@ -72,83 +68,43 @@ def analyze_choices(driver_profiles):
                 reason = "Driver has a history of accidents, making path B a risky choice."
             else:
                 reason = "Other reasons not specified."
-                
             reasons[row['driver_id']] = reason
             
     return reasons
 
-# Function to design interventions (as provided)
+# Step 3: Design Interventions and Alerts
 def design_interventions(driver_profiles):
-    interventions = {}
+    interventions = []
     for _, row in driver_profiles.iterrows():
-        if row['historical_choices'].count('B') > 15:
+        if row['preferred_path'] == 'B':
             suggested_path = 'A'
-            incentive = random.uniform(0.5, 1.0)  # Higher incentive for habitual B choosers
+            alert_message = "🔴 Alert: Path B is dangerous. Please choose the safer path A. 🚨 Vibration on steering wheel."
+            incentive = random.uniform(0.5, 1.0)  # Higher incentive to switch to path A
         else:
             suggested_path = 'A'
+            alert_message = "🟢 You are on the safe path."
             incentive = random.uniform(0.1, 0.5)
 
         intervention = {
             'driver_id': row['driver_id'],
             'incentive': incentive,
-            'suggested_path': suggested_path
+            'suggested_path': suggested_path,
+            'alert_message': alert_message
         }
-        interventions[row['driver_id']] = intervention
-    return interventions
+        interventions.append(intervention)
+    return pd.DataFrame(interventions)
 
-# Function to detect pupil movement using opencv and haarcascade
-def detect_pupil_movement():
-    st.write("Starting camera...")
-
-    # Load the pre-trained face and eye classifiers
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-
-    cap = cv2.VideoCapture(0)
-
-    frame_window = st.image([])
-
-    pygame.init()
-    pygame.mixer.init()
-    beep_sound = pygame.mixer.Sound('beep.wav')
-
-    left_turned = False
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            st.write("Failed to capture image")
-            break
-        
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-        
-        for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-            roi_gray = gray[y:y+h, x:x+w]
-            roi_color = frame[y:y+h, x:x+w]
-            
-            eyes = eye_cascade.detectMultiScale(roi_gray)
-            if len(eyes) >= 2:
-                eye_centers = [((ex + ew // 2), (ey + eh // 2)) for (ex, ey, ew, eh) in eyes]
-                eye_centers = sorted(eye_centers, key=lambda x: x[0])
-                left_eye_center, right_eye_center = eye_centers[:2]
-
-                # Detect if eyes are turned to the left
-                if left_eye_center[0] < right_eye_center[0] - 20:  # Adjust threshold as needed
-                    if not left_turned:
-                        beep_sound.play(loops=-1)  # Play beep sound continuously
-                        left_turned = True
-                else:
-                    if left_turned:
-                        beep_sound.stop()  # Stop beep sound
-                        left_turned = False
-
-                cv2.circle(roi_color, left_eye_center, 5, (0, 255, 0), -1)
-                cv2.circle(roi_color, right_eye_center, 5, (0, 255, 0), -1)
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_window.image(frame)
+# Step 4: Connected Vehicles System
+def connected_vehicle_alerts(driver_profiles, interventions):
+    alerts = []
+    for _, row in driver_profiles.iterrows():
+        intervention = interventions.loc[interventions['driver_id'] == row['driver_id']].iloc[0]
+        if row['preferred_path'] == 'B' or intervention['suggested_path'] == 'B':
+            alert_message = f"🚗 Car {row['driver_id']} chose path B. New car should choose path A."
+            alerts.append(alert_message)
+        else:
+            alerts.append(f"🚗 Car {row['driver_id']} chose path A. No alert needed.")
+    return alerts
 
 # Main Streamlit Application
 def main():
@@ -169,10 +125,16 @@ def main():
         st.subheader("Reasons for Choosing Paths A and B")
         st.write(reasons_for_a_b)
 
-        # Design interventions based on profiles
+        # Design interventions and alerts based on profiles
         interventions = design_interventions(driver_profiles)
-        st.subheader("Interventions")
-        st.write(interventions)
+        st.subheader("Interventions and Alerts")
+        st.dataframe(interventions)
+        
+        # Connected vehicles alert system
+        alerts = connected_vehicle_alerts(driver_profiles, interventions)
+        st.subheader("Connected Vehicle Alerts")
+        for alert in alerts:
+            st.write(alert)
 
         # Visualization of choices
         st.subheader("Distribution of Preferred Paths")
@@ -183,25 +145,22 @@ def main():
         if st.button('Save to CSV'):
             combined_data = []
 
-            for driver_id, intervention in interventions.items():
+            for driver_id, row in interventions.iterrows():
                 driver_data = driver_profiles.loc[driver_profiles['driver_id'] == driver_id].iloc[0]
                 combined_data.append({
                     'driver_id': driver_id,
                     'age': driver_data['age'],
                     'experience_years': driver_data['experience_years'],
                     'preferred_path': driver_data['preferred_path'],
-                    'incentive': intervention['incentive'],
-                    'suggested_path': intervention['suggested_path'],
-                    'reason_for_path_a_or_b': analyze_choices(driver_profiles).get(driver_id, "N/A")
+                    'incentive': row['incentive'],
+                    'suggested_path': row['suggested_path'],
+                    'reason_for_path_a_or_b': analyze_choices(driver_profiles).get(driver_id, "N/A"),
+                    'alert_message': row['alert_message']
                 })
 
             combined_df = pd.DataFrame(combined_data)
-            csv = combined_df.to_csv(index=False)
+            csv = combined_df.to_csv(index=False).encode('utf-8')
             st.download_button(label="Download CSV", data=csv, file_name='driver_profiles.csv', mime='text/csv')
-
-    # Button to start pupil movement detection
-    if st.button('Start Pupil Movement Detection'):
-        detect_pupil_movement()
 
 if __name__ == "__main__":
     main()

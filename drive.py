@@ -51,7 +51,6 @@ def analyze_choices(driver_profiles):
                 reason = "Chosen path A to avoid construction on path B."
             else:
                 reason = "Other reasons not specified."
-
             reasons[row['driver_id']] = reason
             
         elif row['preferred_path'] == 'B':
@@ -69,29 +68,43 @@ def analyze_choices(driver_profiles):
                 reason = "Driver has a history of accidents, making path B a risky choice."
             else:
                 reason = "Other reasons not specified."
-                
             reasons[row['driver_id']] = reason
             
     return reasons
 
-# Step 3: Design Interventions
+# Step 3: Design Interventions and Alerts
 def design_interventions(driver_profiles):
-    interventions = {}
+    interventions = []
     for _, row in driver_profiles.iterrows():
-        if row['historical_choices'].count('B') > 15:
+        if row['preferred_path'] == 'B':
             suggested_path = 'A'
-            incentive = random.uniform(0.5, 1.0)  # Higher incentive for habitual B choosers
+            alert_message = "🔴 Alert: Path B is dangerous. Please choose the safer path A. 🚨 Vibration on steering wheel."
+            incentive = random.uniform(0.5, 1.0)  # Higher incentive to switch to path A
         else:
             suggested_path = 'A'
+            alert_message = "🟢 You are on the safe path."
             incentive = random.uniform(0.1, 0.5)
 
         intervention = {
             'driver_id': row['driver_id'],
             'incentive': incentive,
-            'suggested_path': suggested_path
+            'suggested_path': suggested_path,
+            'alert_message': alert_message
         }
-        interventions[row['driver_id']] = intervention
-    return interventions
+        interventions.append(intervention)
+    return pd.DataFrame(interventions)
+
+# Step 4: Connected Vehicles System
+def connected_vehicle_alerts(driver_profiles, interventions):
+    alerts = []
+    for _, row in driver_profiles.iterrows():
+        intervention = interventions.loc[interventions['driver_id'] == row['driver_id']].iloc[0]
+        if row['preferred_path'] == 'B' or intervention['suggested_path'] == 'B':
+            alert_message = f"🚗 Car {row['driver_id']} chose path B. New car should choose path A."
+            alerts.append(alert_message)
+        else:
+            alerts.append(f"🚗 Car {row['driver_id']} chose path A. No alert needed.")
+    return alerts
 
 # Main Streamlit Application
 def main():
@@ -112,10 +125,16 @@ def main():
         st.subheader("Reasons for Choosing Paths A and B")
         st.write(reasons_for_a_b)
 
-        # Design interventions based on profiles
+        # Design interventions and alerts based on profiles
         interventions = design_interventions(driver_profiles)
-        st.subheader("Interventions")
-        st.write(interventions)
+        st.subheader("Interventions and Alerts")
+        st.dataframe(interventions)
+        
+        # Connected vehicles alert system
+        alerts = connected_vehicle_alerts(driver_profiles, interventions)
+        st.subheader("Connected Vehicle Alerts")
+        for alert in alerts:
+            st.write(alert)
 
         # Visualization of choices
         st.subheader("Distribution of Preferred Paths")
@@ -126,20 +145,21 @@ def main():
         if st.button('Save to CSV'):
             combined_data = []
 
-            for driver_id, intervention in interventions.items():
+            for driver_id, row in interventions.iterrows():
                 driver_data = driver_profiles.loc[driver_profiles['driver_id'] == driver_id].iloc[0]
                 combined_data.append({
                     'driver_id': driver_id,
                     'age': driver_data['age'],
                     'experience_years': driver_data['experience_years'],
                     'preferred_path': driver_data['preferred_path'],
-                    'incentive': intervention['incentive'],
-                    'suggested_path': intervention['suggested_path'],
-                    'reason_for_path_a_or_b': analyze_choices(driver_profiles).get(driver_id, "N/A")
+                    'incentive': row['incentive'],
+                    'suggested_path': row['suggested_path'],
+                    'reason_for_path_a_or_b': analyze_choices(driver_profiles).get(driver_id, "N/A"),
+                    'alert_message': row['alert_message']
                 })
 
             combined_df = pd.DataFrame(combined_data)
-            csv = combined_df.to_csv(index=False)
+            csv = combined_df.to_csv(index=False).encode('utf-8')
             st.download_button(label="Download CSV", data=csv, file_name='driver_profiles.csv', mime='text/csv')
 
 if __name__ == "__main__":

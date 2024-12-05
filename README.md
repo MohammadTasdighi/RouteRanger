@@ -1,7 +1,7 @@
 # RouteRanger
 # Project Review: Intelligent Intersection Safety System
 
-This system aims to prevent accidents at intersections by analyzing historical data and sharing real-time information between nearby vehicles to guide them through the safest route.
+This system aims to prevent accidents at intersections by analyzing historical data and sharing real-time information between nearby vehicles to guide them through the safest route. 🚗
 
 ## Key Features:
 

@@ -6,10 +6,12 @@ import streamlit as st
 def generate_driver_profiles(num_drivers=10):
     profiles = []
     for _ in range(num_drivers):
+        age = random.randint(18, 70) # Define age before using it 
+        experience_years = random.randint(0, age - 18) # Ensuring experience years do not exceed age - 18
         profile = {
             'driver_id': _,
-            'age': random.randint(15, 70),
-            'experience_years': random.randint(0, 50),
+            'age': age,
+            'experience_years': experience_years,
             'preferred_path': random.choice(['A', 'B']),
             'historical_choices': random.choices(['A', 'B'], k=30),
             'traffic_conditions': random.choice(['Clear', 'Moderate', 'Heavy']),

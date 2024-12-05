@@ -16,3 +16,13 @@ This system aims to prevent accidents at intersections by analyzing historical d
 - **Data-Driven Decisions**: Utilizes historical data to make informed recommendations.
 - **Enhanced Connectivity**: Vehicles communicate to ensure drivers have up-to-date safety information.
 - **User-Friendly**: Provides an intuitive and clear interface for drivers to receive alerts and suggestions.
+___
+##RUN
+```
+pip install streamlit
+
+```
+```
+streamlit run drive.py
+```
+___

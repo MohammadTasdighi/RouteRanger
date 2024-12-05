@@ -17,7 +17,7 @@ This system aims to prevent accidents at intersections by analyzing historical d
 - **Enhanced Connectivity**: Vehicles communicate to ensure drivers have up-to-date safety information.
 - **User-Friendly**: Provides an intuitive and clear interface for drivers to receive alerts and suggestions.
 ___
-##RUN
+# HOW TO RUN IT
 ```
 pip install streamlit
 

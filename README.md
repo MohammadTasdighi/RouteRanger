@@ -18,10 +18,12 @@ This system aims to prevent accidents at intersections by analyzing historical d
 - **User-Friendly**: Provides an intuitive and clear interface for drivers to receive alerts and suggestions.
 ___
 # HOW TO RUN IT
+1-
 ```
 pip install streamlit
 
 ```
+2-
 ```
 streamlit run drive.py
 ```
